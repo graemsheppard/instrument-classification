@@ -35,7 +35,7 @@ labels = []
 
 for label in os.listdir(data_dir):
     # Filter out the readme and other non labels in dataset
-    if (os.path.isdir):
+    if (os.path.isdir(os.path.join(data_dir, label))):
         labels.append(label)
 
 # Iterate over subfolders (labels)
