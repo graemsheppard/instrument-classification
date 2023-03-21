@@ -1,4 +1,5 @@
 venv
 training_data
+saved_model
 .vscode
 .pycharm
