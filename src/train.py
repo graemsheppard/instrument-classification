@@ -77,7 +77,7 @@ model.add(Input(shape=input_size))
 # but should help computational performance
 model.add(Dense(input_size, activation=tf.nn.relu))
 model.add(Dense(int(input_size / 2), activation=tf.nn.relu))
-model.add(Dense(int(input_size / 4), activation=tf.nn.relu))
+
 
 model.add(Dense(len(LABELS), activation=tf.nn.sigmoid))
 
@@ -86,7 +86,7 @@ x_train = np.array(x_train)
 y_train = np.array(y_train)
 
 # Compile model and fit data
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics='categorical_accuracy')
-model.fit(x_train, y_train, validation_split=0.3, epochs=1, batch_size=128)
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics='binary_accuracy')
+model.fit(x_train, y_train, validation_split=0.3, epochs=3, batch_size=128)
 
 model.save("saved_model")
