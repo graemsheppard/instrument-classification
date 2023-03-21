@@ -1,1 +1,6 @@
 venv
+training_data
+saved_model
+.vscode
+.pycharm
+__pycache__
