@@ -24,6 +24,11 @@ from util import LABELS, SAMPLE_SIZE, STEP_SIZE, transform, to_output_vector
 data_dir = 'training_data'
 label_regex = "(?<=\\[)[a-z]{3}(?=\\])"
 
+# Reduce the size of the training data for faster optimizations
+development = True
+
+# Step through files faster in development mode, taking fewer samples (still of length SAMPLE_SIZE)
+step_size = 8 * STEP_SIZE if development else STEP_SIZE
 
 x_train = []
 y_train = []
@@ -31,11 +36,16 @@ y_train = []
 # Iterate over subfolders (labels) to gather training data
 for label in LABELS:
 
-    print("Processsing files in: " + label)
+    # The number of files processed, should equal total files when development = False
+    file_count = 0
     # Iterate over wavfiles
     files = os.listdir(os.path.join(data_dir, label))
     for file_index, filename in enumerate(files):
-        print("\rFile " + str(file_index + 1) + "/" + str(len(files)), end="")
+        # Take every 4thnd file in development mode
+        if development and file_index % 4 != 0:
+            idx = idx + step_size
+            continue
+        print("\rProcesssing files in: " + label + " (" + str(file_count + 1) + "/" + str(len(files)) + ")...", end="")
         file_path = os.path.join(data_dir, label, filename)
         sample_rate, audio = wavfile.read(file_path)
 
@@ -58,14 +68,16 @@ for label in LABELS:
             # Apply fft and normalization
             freqs = transform(samples)
             if freqs is None:
-                idx = idx + STEP_SIZE
+                idx = idx + step_size
                 continue
 
             # Get training data
             x_train.append(freqs)
             y_train.append(cur_y)
-            idx = idx + STEP_SIZE
-    print("\n")
+            idx = idx + step_size
+
+        file_count = file_count + 1
+    print("DONE")
 
 
 # Create the model
