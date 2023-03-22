@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 
 from scipy.fft import fft
@@ -44,3 +46,10 @@ def to_output_vector(labels: list):
     for label in labels:
         result[LABELS.index(label)] = 1
     return result
+
+def parse_labels(filename: str):
+    label_regex = "(?<=\\[)[a-z]{3}(?=\\])"
+    # Find labels by matching 3 letters between square brackets
+    labels = re.findall(label_regex, filename)
+    # Some files have labels about genre which we can ignore
+    return list(filter(lambda l: l in LABELS, labels))

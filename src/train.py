@@ -10,7 +10,7 @@ from scipy.fft import fft
 from keras.models import Sequential
 from keras.layers import Input, Dense
 
-from util import LABELS, SAMPLE_SIZE, STEP_SIZE, transform, to_output_vector
+from util import LABELS, SAMPLE_SIZE, STEP_SIZE, transform, to_output_vector, parse_labels
 
 
 # WAV file values are 16-bit ranging from -32,768 to 32,767
@@ -20,9 +20,10 @@ from util import LABELS, SAMPLE_SIZE, STEP_SIZE, transform, to_output_vector
 # the other half are symmetric to the first
 # The frequency of bin b(i) is i * k where k = sample_rate / sample_size
 
+# TODO: kmeans to determine frequencies we need to isolate per label?
 
 data_dir = 'training_data'
-label_regex = "(?<=\\[)[a-z]{3}(?=\\])"
+
 
 # Reduce the size of the training data for faster optimizations
 development = True
@@ -48,12 +49,7 @@ for label in LABELS:
         print("\rProcesssing files in: " + label + " (" + str(file_count + 1) + "/" + str(len(files)) + ")...", end="")
         file_path = os.path.join(data_dir, label, filename)
         sample_rate, audio = wavfile.read(file_path)
-
-        # Find labels by matching 3 letters between square brackets
-        cur_labels = re.findall(label_regex, filename)
-
-        # Some files have labels about genre which we can ignore
-        cur_labels = list(filter(lambda l: l in LABELS, cur_labels))
+        cur_labels = parse_labels(filename)
 
         # Convert labels array of 1s and 0s
         cur_y = to_output_vector(cur_labels)
