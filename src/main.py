@@ -31,7 +31,7 @@ def main():
             sample_rate, audio = wavfile.read(file_path)
             idx = 0
             y_test = np.array(to_output_vector(parse_labels(filename)), dtype=float)
-            while idx + SAMPLE_SIZE < len(test_audio):
+            while idx + SAMPLE_SIZE < len(audio):
                 samples = audio[idx : idx + SAMPLE_SIZE, :]
                 freqs = transform(samples)
                 x_test = np.expand_dims(freqs, axis=0)
