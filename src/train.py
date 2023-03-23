@@ -8,7 +8,7 @@ from scipy.io import wavfile
 from scipy.fft import fft
 
 from keras.models import Sequential
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, Dropout
 
 from util import LABELS, SAMPLE_SIZE, STEP_SIZE, transform, to_output_vector, parse_labels
 
@@ -29,10 +29,9 @@ data_dir = 'training_data'
 development = True
 
 # Step through files faster in development mode, taking fewer samples (still of length SAMPLE_SIZE)
-step_size = 8 * STEP_SIZE if development else STEP_SIZE
+step_size = 4 * STEP_SIZE if development else STEP_SIZE
 
-x_train = []
-y_train = []
+train = []
 
 # Iterate over subfolders (labels) to gather training data
 for label in LABELS:
@@ -42,8 +41,8 @@ for label in LABELS:
     # Iterate over wavfiles
     files = os.listdir(os.path.join(data_dir, label))
     for file_index, filename in enumerate(files):
-        # Take every 4thnd file in development mode
-        if development and file_index % 4 != 0:
+        # Take every 4th file in development mode
+        if development and file_index % 2 != 0:
             idx = idx + step_size
             continue
         print("\rProcesssing files in: " + label + " (" + str(file_count + 1) + "/" + str(len(files)) + ")...", end="")
@@ -68,8 +67,10 @@ for label in LABELS:
                 continue
 
             # Get training data
-            x_train.append(freqs)
-            y_train.append(cur_y)
+            row = []
+            row.extend(cur_y)
+            row.extend(freqs)
+            train.append(row)
             idx = idx + step_size
 
         file_count = file_count + 1
@@ -83,18 +84,18 @@ model.add(Input(shape=input_size))
 
 # Add constantly decreasing in size layers, this should not affect prediction performance
 # but should help computational performance
-model.add(Dense(input_size, activation=tf.nn.relu))
-model.add(Dense(int(input_size / 2), activation=tf.nn.relu))
-
-
+model.add(Dense(int(input_size), activation=tf.nn.leaky_relu))
+model.add(Dense(int(input_size / 2), activation=tf.nn.leaky_relu))
 model.add(Dense(len(LABELS), activation=tf.nn.sigmoid))
 
-# Convert data to correct form
-x_train = np.array(x_train)
-y_train = np.array(y_train)
+# Convert data to correct form and shuffle
+train = np.array(train)
+np.random.shuffle(train)
+x_train = train[:, 11:]
+y_train = train[:, :11]
 
 # Compile model and fit data
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics='binary_accuracy')
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['binary_accuracy'])
 model.fit(x_train, y_train, validation_split=0.3, epochs=3, batch_size=128)
 
 model.save("saved_model")

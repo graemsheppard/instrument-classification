@@ -23,21 +23,33 @@ def main():
 
     # Print 3 decimals
     np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
-
-    for label in LABELS:
+    passes = 0
+    for label in reversed(LABELS):
         files = os.listdir(os.path.join(data_dir, label))
         for file_index, filename in enumerate(files):
             file_path = os.path.join(data_dir, label, filename)
             sample_rate, audio = wavfile.read(file_path)
             idx = 0
-            y_test = np.array(to_output_vector(parse_labels(filename)), dtype=float)
+            y_test = to_output_vector(parse_labels(filename))
+            last_n = []
             while idx + SAMPLE_SIZE < len(audio):
                 samples = audio[idx : idx + SAMPLE_SIZE, :]
                 freqs = transform(samples)
                 x_test = np.expand_dims(freqs, axis=0)
                 y_pred = model.predict(x_test, verbose=0)[0]
-                print(y_test)
-                print(str(y_pred) + "\n")
+                
+                last_n.append(y_pred)
+                if (len(last_n) > 64):
+                    last_n.pop(0)
+                
+                average = np.average(np.array(last_n), axis=0)
+
+                y_pred = np.array(np.round(average, 0), dtype=int)
+                if np.array_equal(y_test, y_pred):
+                    print("PASS " + str(passes))
+                    print(average)
+                    passes = passes + 1
+
                 idx = idx + step_size
         
 
