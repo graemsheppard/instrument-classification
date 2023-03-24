@@ -8,50 +8,61 @@ from scipy.io import wavfile
 from keras.models import load_model
 from keras.engine.sequential import Sequential
 
-from util import SAMPLE_SIZE, STEP_SIZE, LABELS, transform, parse_labels, to_output_vector
+from util import SAMPLE_SIZE, STEP_SIZE, LABELS, transform
 
 
 def main():
-
-    # All code below is just demoing the prediction on the training data
-
-    data_dir = "training_data"
-
-    step_size = 16 * STEP_SIZE
-
     model: Sequential = load_model('saved_model')
 
-    # Print 3 decimals
-    np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
-    passes = 0
-    for label in reversed(LABELS):
-        files = os.listdir(os.path.join(data_dir, label))
-        for file_index, filename in enumerate(files):
-            file_path = os.path.join(data_dir, label, filename)
-            sample_rate, audio = wavfile.read(file_path)
-            idx = 0
-            y_test = to_output_vector(parse_labels(filename))
-            last_n = []
-            while idx + SAMPLE_SIZE < len(audio):
-                samples = audio[idx : idx + SAMPLE_SIZE, :]
-                freqs = transform(samples)
-                x_test = np.expand_dims(freqs, axis=0)
-                y_pred = model.predict(x_test, verbose=0)[0]
-                
-                last_n.append(y_pred)
-                if (len(last_n) > 64):
-                    last_n.pop(0)
-                
-                average = np.average(np.array(last_n), axis=0)
+    data_dir = "testing_data"
+    files = os.listdir(data_dir)
+    
+    print(files)
 
-                y_pred = np.array(np.round(average, 0), dtype=int)
-                if np.array_equal(y_test, y_pred):
-                    print("PASS " + str(passes))
-                    print(average)
-                    passes = passes + 1
+    for idx, file in enumerate(files):
+        extension = file.split('.')[1]
+        if extension == 'wav':
+            continue
 
-                idx = idx + step_size
+        print('--------------------------------------------------')
+
+        labels = []
+        with open(os.path.join(data_dir,file), "r") as label_file:
+            data = label_file.read()
+            lines = data.split('\n')
+            labels = [label for label in lines]
         
+        audio_file = os.path.join(data_dir, f'{file.split(".")[0]}.wav')
+         
+        test_sample_rate, test_audio = wavfile.read(audio_file)
+
+        sums = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+        idx = 0
+        num_samples = 0
+        while idx + SAMPLE_SIZE < len(test_audio):
+            num_samples+=1
+            test_samples = test_audio[idx : idx + SAMPLE_SIZE, :]
+            test_freqs = transform(test_samples)
+            x_test = np.expand_dims(test_freqs, axis=0)
+            try:
+                y_test = model.predict(x_test, verbose=0)
+            except Exception as e:
+                print(e)
+                break
+
+            sums = [averages[i] + value for i, value in enumerate(y_test[0])]
+            idx = idx + STEP_SIZE
+        
+        averages = [sum/num_samples for sum in sums]
+        
+        print(f'Labels: {labels}')
+        print('Predicted:')
+        print(averages)
+
+        for i, average in enumerate(averages):
+            if average > 0.2:
+                print(LABELS[i])
 
 if __name__ == "__main__":
     main()
