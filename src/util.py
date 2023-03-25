@@ -1,9 +1,12 @@
+import re
+
 import numpy as np
 
 from scipy.fft import fft
 
 # Script to contain helper functions and variables
 
+SAMPLE_RATE = 44100
 SAMPLE_SIZE = 1024
 STEP_SIZE = 512
 LABELS = ["cel", "cla", "flu", "gac", "gel", "org", "pia", "sax", "tru", "vio", "voi"]
@@ -24,17 +27,17 @@ def transform(samples: np.ndarray):
     freqs = np.abs(freqs)
 
     # Normalize between 0 and 1, skip if denominator = 0
-    if np.max(freqs) - np.min(freqs) == 0:
+    if np.max(freqs) == 0:
         return None
-    freqs_norm = (freqs - np.min(freqs)) / (np.max(freqs) - np.min(freqs))
+    freqs_norm = freqs / np.max(freqs)
 
     return freqs_norm
 
 
 # Converts the bin number into the frequency it represents
-def get_bins(sample_rate, sample_size):
-    idxs = np.array(range(0, int(sample_size / 2)))
-    k = sample_rate / sample_size
+def get_bins():
+    idxs = np.array(range(0, int(SAMPLE_SIZE / 2)))
+    k = SAMPLE_RATE / SAMPLE_SIZE
     return idxs * k
 
 # Takes list of labels i.e. cla, cel and returns array of the same length as LABELS which is all possible labels
@@ -44,3 +47,31 @@ def to_output_vector(labels: list):
     for label in labels:
         result[LABELS.index(label)] = 1
     return result
+
+def parse_labels(filename: str):
+    label_regex = "(?<=\\[)[a-z]{3}(?=\\])"
+    # Find labels by matching 3 letters between square brackets
+    labels = re.findall(label_regex, filename)
+    # Some files have labels about genre which we can ignore
+    return list(filter(lambda l: l in LABELS, labels))
+
+# Perform flat moving average smoothing
+def smooth(arr: list, window: int):
+    if (window % 2 == 0 or window <= 3):
+        raise ValueError("Window must be an odd integer and greater than 3")
+    
+    result = []
+    for i in range(len(arr)):
+        sum = 0
+        size = 0
+        for j in range(window):
+            idx = i - int(window / 2) + j
+            if not (idx < 0 or idx >= len(arr)):
+                sum += arr[idx]
+                size += 1                
+
+        result.append(sum / size)
+
+    return np.array(result)
+
+    

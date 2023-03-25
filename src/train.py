@@ -6,11 +6,14 @@ import tensorflow as tf
 
 from scipy.io import wavfile
 from scipy.fft import fft
+from scipy import signal
 
 from keras.models import Sequential
-from keras.layers import Input, Dense
+from keras.layers import Input, Dense, Dropout
 
-from util import LABELS, SAMPLE_SIZE, STEP_SIZE, transform, to_output_vector
+from matplotlib import pyplot as plt
+
+from util import *
 
 
 # WAV file values are 16-bit ranging from -32,768 to 32,767
@@ -20,32 +23,45 @@ from util import LABELS, SAMPLE_SIZE, STEP_SIZE, transform, to_output_vector
 # the other half are symmetric to the first
 # The frequency of bin b(i) is i * k where k = sample_rate / sample_size
 
+# TODO: kmeans to determine frequencies we need to isolate per label?
 
 data_dir = 'training_data'
-label_regex = "(?<=\\[)[a-z]{3}(?=\\])"
 
 
-x_train = []
-y_train = []
+# Reduce the size of the training data for faster optimizations
+development = True
+
+# Step through files faster in development mode, taking fewer samples (still of length SAMPLE_SIZE)
+step_size = 8 * STEP_SIZE if development else STEP_SIZE
+
+train = []
+
+instruments = {}
+for label in LABELS:
+    instruments[label] = []
+
 
 # Iterate over subfolders (labels) to gather training data
 for label in LABELS:
-
-    print("Processsing files in: " + label)
+    # The number of files processed, should equal total files when development = False
+    file_count = 0
     # Iterate over wavfiles
     files = os.listdir(os.path.join(data_dir, label))
     for file_index, filename in enumerate(files):
-        print("\rFile " + str(file_index + 1) + "/" + str(len(files)), end="")
+        # Take every 4th file in development mode
+        if development and file_index % 16 != 0:
+            continue
+
+        print("\rProcesssing files in: " + label + " (" + str(file_count + 1) + "/" + str(len(files)) + ")...", end="")
         file_path = os.path.join(data_dir, label, filename)
         sample_rate, audio = wavfile.read(file_path)
 
-        # Find labels by matching 3 letters between square brackets
-        cur_labels = re.findall(label_regex, filename)
-
-        # Some files have labels about genre which we can ignore
-        cur_labels = list(filter(lambda l: l in LABELS, cur_labels))
+        # Skip file if incorrect sample rate
+        if sample_rate != SAMPLE_RATE:
+            continue
 
         # Convert labels array of 1s and 0s
+        cur_labels = parse_labels(filename)
         cur_y = to_output_vector(cur_labels)
 
         # Iterate through samples
@@ -58,16 +74,51 @@ for label in LABELS:
             # Apply fft and normalization
             freqs = transform(samples)
             if freqs is None:
-                idx = idx + STEP_SIZE
+                idx = idx + step_size
                 continue
 
             # Get training data
-            x_train.append(freqs)
-            y_train.append(cur_y)
-            idx = idx + STEP_SIZE
-    print("\n")
+            row = []
+            row.extend(cur_y)
+            row.extend(freqs)
+            train.append(row)
 
+            for c in cur_labels:
+                instruments[c].append(freqs)
 
+            idx = idx + step_size
+
+        file_count = file_count + 1
+    print("DONE")
+
+avg_each_inst = []
+# Average all the samples per instrument
+for key, value in instruments.items():
+    avg = np.sum(value, axis=0) / len(value)
+    instruments[key] = avg
+    avg_each_inst.append(avg)
+
+# Find the average frequencies across all instruments
+avg_all_inst = np.sum(avg_each_inst, axis=0) / len(LABELS)
+
+bins = get_bins()
+# Subtract the average over all instruments from the current instrument to find dominant frequencies
+for key, value in instruments.items():
+    dominant_freqs = value - avg_all_inst
+    # Restrict values to positive range
+    dominant_freqs = np.clip(dominant_freqs, 0, 1)
+    # Apply butterworth filter to reduce noise
+    nyq = 0.5 * SAMPLE_RATE
+    cutoff = 500 / nyq
+    b, a = signal.butter(5, cutoff, 'low')
+    dominant_freqs = signal.filtfilt(b, a, dominant_freqs)
+    # Normalize and cutoff at 0.2
+    dominant_freqs = dominant_freqs / np.max(dominant_freqs)
+    dominant_freqs = np.where(dominant_freqs < 0.2, 0, dominant_freqs)
+
+    plt.plot(bins, dominant_freqs, label=key)
+plt.legend()
+plt.show()
 # Create the model
 model = Sequential()
 input_size = int(SAMPLE_SIZE / 2)
@@ -75,18 +126,18 @@ model.add(Input(shape=input_size))
 
 # Add constantly decreasing in size layers, this should not affect prediction performance
 # but should help computational performance
-model.add(Dense(input_size, activation=tf.nn.relu))
-model.add(Dense(int(input_size / 2), activation=tf.nn.relu))
-model.add(Dense(int(input_size / 4), activation=tf.nn.relu))
-
+model.add(Dense(int(input_size), activation=tf.nn.leaky_relu))
+model.add(Dense(int(input_size / 2), activation=tf.nn.leaky_relu))
 model.add(Dense(len(LABELS), activation=tf.nn.sigmoid))
 
-# Convert data to correct form
-x_train = np.array(x_train)
-y_train = np.array(y_train)
+# Convert data to correct form and shuffle
+train = np.array(train)
+np.random.shuffle(train)
+x_train = train[:, 11:]
+y_train = train[:, :11]
 
 # Compile model and fit data
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics='categorical_accuracy')
-model.fit(x_train, y_train, validation_split=0.3, epochs=1, batch_size=128)
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['binary_accuracy'])
+model.fit(x_train, y_train, validation_split=0.3, epochs=3, batch_size=128)
 
 model.save("saved_model")
