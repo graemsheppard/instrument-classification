@@ -1,6 +1,7 @@
 venv
 training_data
 saved_model
+inst_freqs.csv
 .vscode
 .pycharm
 __pycache__

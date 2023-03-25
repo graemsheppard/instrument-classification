@@ -32,7 +32,7 @@ data_dir = 'training_data'
 development = True
 
 # Step through files faster in development mode, taking fewer samples (still of length SAMPLE_SIZE)
-step_size = 8 * STEP_SIZE if development else STEP_SIZE
+step_size = 4 * STEP_SIZE if development else STEP_SIZE
 
 train = []
 
@@ -49,7 +49,7 @@ for label in LABELS:
     files = os.listdir(os.path.join(data_dir, label))
     for file_index, filename in enumerate(files):
         # Take every 4th file in development mode
-        if development and file_index % 16 != 0:
+        if development and file_index % 4 != 0:
             continue
 
         print("\rProcesssing files in: " + label + " (" + str(file_count + 1) + "/" + str(len(files)) + ")...", end="")
@@ -102,21 +102,30 @@ for key, value in instruments.items():
 avg_all_inst = np.sum(avg_each_inst, axis=0) / len(LABELS)
 
 bins = get_bins()
+inst_freqs = {}
 # Subtract the average over all instruments from the current instrument to find dominant frequencies
-for key, value in instruments.items():
-    dominant_freqs = value - avg_all_inst
-    # Restrict values to positive range
-    dominant_freqs = np.clip(dominant_freqs, 0, 1)
-    # Apply butterworth filter to reduce noise
-    nyq = 0.5 * SAMPLE_RATE
-    cutoff = 500 / nyq
-    b, a = signal.butter(5, cutoff, 'low')
-    dominant_freqs = signal.filtfilt(b, a, dominant_freqs)
-    # Normalize and cutoff at 0.2
-    dominant_freqs = dominant_freqs / np.max(dominant_freqs)
-    dominant_freqs = np.where(dominant_freqs < 0.2, 0, dominant_freqs)
-
-    plt.plot(bins, dominant_freqs, label=key)
+with open("inst_freqs.csv", "w+") as csv:
+    header = "INST"
+    for bin in bins:
+        header += ", " + str(int(bin))
+    csv.write(header + "\n")
+    for key, value in instruments.items():
+        dominant_freqs = value - avg_all_inst
+        # Restrict values to positive range
+        dominant_freqs = np.clip(dominant_freqs, 0, 1)
+        # Apply butterworth filter to reduce noise
+        nyq = 0.5 * SAMPLE_RATE
+        cutoff = 1000 / nyq
+        b, a = signal.butter(5, cutoff, 'low')
+        dominant_freqs = signal.filtfilt(b, a, dominant_freqs)
+        # Normalize and cutoff at 0.2
+        dominant_freqs = dominant_freqs / np.max(dominant_freqs)
+        dominant_freqs = np.where(dominant_freqs < 0.2, 0, dominant_freqs)
+        csv_row = key
+        for freq in dominant_freqs:
+            csv_row += ", " + str(freq)
+        csv.write(csv_row + "\n")
+        plt.plot(bins, dominant_freqs, label=key)
 plt.legend()
 plt.show()
 # Create the model
