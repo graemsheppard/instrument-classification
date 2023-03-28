@@ -74,7 +74,7 @@ def main():
                 print(e)
                 break
 
-            sums = [averages[i] + value for i, value in enumerate(y_test[0])]
+            sums = [sums[i] + value for i, value in enumerate(y_test[0])]
             idx = idx + STEP_SIZE
         
         averages = [sum/num_samples for sum in sums]
