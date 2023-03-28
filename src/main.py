@@ -1,4 +1,6 @@
 import os
+import train
+import argparse
 
 import numpy as np
 import tensorflow as tf
@@ -10,9 +12,30 @@ from keras.engine.sequential import Sequential
 
 from util import SAMPLE_SIZE, STEP_SIZE, LABELS, transform
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="An AI that detects the instruments playing in a sample")
+    parser.add_argument('-p', '--path', type=str, help='Input file path', required=True)
+    parser.add_argument('-b', '--build', action='store_true', help='Force build the model, even if one already exists')
+    args = parser.parse_args()
+    return args
+    
+def load_keras_model():
+    model: Sequential = load_model('saved_model')
+    return model
 
 def main():
-    model: Sequential = load_model('saved_model')
+    args = parse_args()
+    # Whatever we want to do with that path
+    # print(args.path)
+    
+    if (args.build):
+        train.main()
+    
+    try:
+        model = load_keras_model()
+    except:
+        train.main()
+        model = load_keras_model()
 
     data_dir = "testing_data"
     files = os.listdir(data_dir)
