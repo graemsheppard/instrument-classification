@@ -11,3 +11,7 @@ Training data can be downloaded [here](https://www.upf.edu/web/mtg/irmas) and sh
  - Activate venv before installing packages and running code `source venv/bin/activate` (Unix) `venv/Scripts/activate` (Windows)
  - Install packages `pip install -r requirements.txt`
  - When updating `requirements.txt`, use `pipreqs` (`pip install pipreqs)
+
+## Usage
+`py main.py -p <path>`
+Use the optional flag `-b` to force rebuilding the model.
