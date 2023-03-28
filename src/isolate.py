@@ -38,16 +38,16 @@ for i in range(len(inst_freqs)):
 
     # Low pass if the lowerbound is 0 or less
     if lb <= 0:
-        b, a = signal.butter(5, ub, 'lowpass', fs=SAMPLE_RATE)
+        sos = signal.butter(10, ub, 'lowpass', fs=SAMPLE_RATE, output='sos')
     # High pass if the upperbound is greater than the Nyquist frequency
     elif ub >= SAMPLE_RATE / 2:
-        b, a = signal.butter(5, lb, 'highpass', fs=SAMPLE_RATE)
+        sos = signal.butter(10, lb, 'highpass', fs=SAMPLE_RATE, output='sos')
     # Band pass for all other cases
     else:
-        b, a = signal.butter(5, [lb, ub], 'bandpass', fs=SAMPLE_RATE)
+        sos = signal.butter(10, [lb, ub], 'bandpass', fs=SAMPLE_RATE, output='sos')
     
     # Apply the filter and multiply by the weight
-    new_audio = signal.filtfilt(b, a, input_audio).astype(np.int16) * freq
+    new_audio = signal.sosfiltfilt(sos, input_audio).astype(np.int16) * freq
     filtered.append(new_audio)
 
 # Average all of the filters applied

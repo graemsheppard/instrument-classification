@@ -114,10 +114,10 @@ with open("inst_freqs.csv", "w+") as csv:
         # Restrict values to positive range
         dominant_freqs = np.clip(dominant_freqs, 0, 1)
         # Apply butterworth filter to reduce noise
-        nyq = 0.5 * SAMPLE_RATE
+        nyq = SAMPLE_RATE / 4
         cutoff = 1000 / nyq
-        b, a = signal.butter(5, cutoff, 'low')
-        dominant_freqs = signal.filtfilt(b, a, dominant_freqs)
+        sos = signal.butter(5, cutoff, 'lowpass', output='sos')
+        dominant_freqs = signal.sosfilt(sos, dominant_freqs)
         # Normalize and cutoff at 0.2
         dominant_freqs = dominant_freqs / np.max(dominant_freqs)
         dominant_freqs = np.where(dominant_freqs < 0.2, 0, dominant_freqs)
