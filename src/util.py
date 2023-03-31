@@ -3,6 +3,7 @@ import re
 import numpy as np
 
 from scipy.fft import fft
+from scipy import interpolate
 
 # Script to contain helper functions and variables
 
@@ -74,4 +75,17 @@ def smooth(arr: list, window: int):
 
     return np.array(result)
 
+
+def get_exp_bins():
+    bins = list(range(0, 512))
+    result = []
+    for b in bins:
+        result.append(55 * pow(2, b * 0.01689))
+    return result
+
+def to_exponential(x):
+    bins = get_bins()
+    exp_bins = get_exp_bins()
+    interpolater = interpolate.interp1d(bins, x)
+    return interpolater(exp_bins)
     

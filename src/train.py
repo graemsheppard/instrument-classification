@@ -100,20 +100,23 @@ def main():
     avg_all_inst = np.sum(avg_each_inst, axis=0) / len(LABELS)
 
     bins = get_bins()
+    exp_bins = get_exp_bins()
+
     inst_freqs = {}
     # Subtract the average over all instruments from the current instrument to find dominant frequencies
     with open("inst_freqs.csv", "w+") as csv:
         header = "INST"
-        for bin in bins:
+        for bin in exp_bins:
             header += ", " + str(int(bin))
         csv.write(header + "\n")
         for key, value in instruments.items():
             dominant_freqs = value - avg_all_inst
             # Restrict values to positive range
             dominant_freqs = np.clip(dominant_freqs, 0, 1)
+            dominant_freqs = to_exponential(dominant_freqs)
             # Apply butterworth filter to reduce noise
             nyq = SAMPLE_RATE / 4
-            cutoff = 1000 / nyq
+            cutoff = 800 / nyq
             sos = signal.butter(5, cutoff, 'lowpass', output='sos')
             dominant_freqs = signal.sosfilt(sos, dominant_freqs)
             # Normalize and cutoff at 0.2
@@ -123,7 +126,7 @@ def main():
             for freq in dominant_freqs:
                 csv_row += ", " + str(freq)
             csv.write(csv_row + "\n")
-            plt.plot(bins, dominant_freqs, label=key)
+            plt.plot(exp_bins, dominant_freqs, label=key)
     plt.legend()
     plt.show()
 

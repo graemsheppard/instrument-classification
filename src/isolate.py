@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np
 
 from scipy.io import wavfile
-from scipy import signal
+from scipy import signal, interpolate
+from matplotlib import pyplot as plt
 from util import *
 
 
@@ -23,7 +24,7 @@ inst_freqs_all = np.array(pd.read_csv("inst_freqs.csv"))
 # Get the frequencies for the selected instrument and remove label
 inst_freqs = inst_freqs_all[np.where(inst_freqs_all[:, 0] == isolate)]
 inst_freqs = inst_freqs[0, 1:]
-inst_freqs = list(zip(get_bins(), inst_freqs))
+exp_bins = get_exp_bins()
 
 filtered = []
 
@@ -31,20 +32,21 @@ filtered = []
 # Should consider making all of the audio processing on an exponential scale
 bin_width = 4 * SAMPLE_RATE / SAMPLE_SIZE
 for i in range(len(inst_freqs)):
-    bin, freq = inst_freqs[i]
+    bin = exp_bins[i]
+    freq = inst_freqs[i]
     # bounds for filter
-    lb = int(bin - (bin_width / 2))
-    ub = int(bin + (bin_width / 2))
+    lb = bin * pow(2, -0.01689 / 2)
+    ub = bin * pow(2, 0.01689 / 2)
 
     # Low pass if the lowerbound is 0 or less
     if lb <= 0:
-        sos = signal.butter(10, ub, 'lowpass', fs=SAMPLE_RATE, output='sos')
+        sos = signal.butter(5, ub, 'lowpass', fs=SAMPLE_RATE, output='sos')
     # High pass if the upperbound is greater than the Nyquist frequency
     elif ub >= SAMPLE_RATE / 2:
-        sos = signal.butter(10, lb, 'highpass', fs=SAMPLE_RATE, output='sos')
+        sos = signal.butter(5, lb, 'highpass', fs=SAMPLE_RATE, output='sos')
     # Band pass for all other cases
     else:
-        sos = signal.butter(10, [lb, ub], 'bandpass', fs=SAMPLE_RATE, output='sos')
+        sos = signal.butter(5, [lb, ub], 'bandpass', fs=SAMPLE_RATE, output='sos')
     
     # Apply the filter and multiply by the weight
     new_audio = signal.sosfiltfilt(sos, input_audio).astype(np.int16) * freq
