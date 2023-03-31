@@ -1,15 +1,13 @@
 import os
-import re
 
 import numpy as np
 import tensorflow as tf
 
 from scipy.io import wavfile
-from scipy.fft import fft
 from scipy import signal
 
 from keras.models import Sequential
-from keras.layers import Input, Dense, Dropout
+from keras.layers import Input, Dense
 
 from matplotlib import pyplot as plt
 
@@ -86,9 +84,9 @@ def main():
                 for c in cur_labels:
                     instruments[c].append(freqs)
 
-                idx = idx + step_size
+                idx += step_size
+            file_count += 1
 
-            file_count = file_count + 1
         print("DONE")
 
     avg_each_inst = []
@@ -102,23 +100,36 @@ def main():
     avg_all_inst = np.sum(avg_each_inst, axis=0) / len(LABELS)
 
     bins = get_bins()
-    # Subtract the average over all instruments from the current instrument to find dominant frequencies
-    for key, value in instruments.items():
-        dominant_freqs = value - avg_all_inst
-        # Restrict values to positive range
-        dominant_freqs = np.clip(dominant_freqs, 0, 1)
-        # Apply butterworth filter to reduce noise
-        nyq = 0.5 * SAMPLE_RATE
-        cutoff = 500 / nyq
-        b, a = signal.butter(5, cutoff, 'low')
-        dominant_freqs = signal.filtfilt(b, a, dominant_freqs)
-        # Normalize and cutoff at 0.2
-        dominant_freqs = dominant_freqs / np.max(dominant_freqs)
-        dominant_freqs = np.where(dominant_freqs < 0.2, 0, dominant_freqs)
+    exp_bins = get_exp_bins()
 
-        plt.plot(bins, dominant_freqs, label=key)
+    inst_freqs = {}
+    # Subtract the average over all instruments from the current instrument to find dominant frequencies
+    with open("inst_freqs.csv", "w+") as csv:
+        header = "INST"
+        for bin in exp_bins:
+            header += ", " + str(int(bin))
+        csv.write(header + "\n")
+        for key, value in instruments.items():
+            dominant_freqs = value - avg_all_inst
+            # Restrict values to positive range
+            dominant_freqs = np.clip(dominant_freqs, 0, 1)
+            dominant_freqs = to_exponential(dominant_freqs)
+            # Apply butterworth filter to reduce noise
+            nyq = SAMPLE_RATE / 4
+            cutoff = 800 / nyq
+            sos = signal.butter(5, cutoff, 'lowpass', output='sos')
+            dominant_freqs = signal.sosfilt(sos, dominant_freqs)
+            # Normalize and cutoff at 0.2
+            dominant_freqs = dominant_freqs / np.max(dominant_freqs)
+            dominant_freqs = np.where(dominant_freqs < 0.2, 0, dominant_freqs)
+            csv_row = key
+            for freq in dominant_freqs:
+                csv_row += ", " + str(freq)
+            csv.write(csv_row + "\n")
+            plt.plot(exp_bins, dominant_freqs, label=key)
     plt.legend()
     plt.show()
+
     # Create the model
     model = Sequential()
     input_size = int(SAMPLE_SIZE / 2)
@@ -141,6 +152,7 @@ def main():
     model.fit(x_train, y_train, validation_split=0.3, epochs=3, batch_size=128)
 
     model.save("saved_model")
-    
-if (__name__) == '__main__':
+
+
+if __name__ == "__main__":
     main()

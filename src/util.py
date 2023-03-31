@@ -3,6 +3,7 @@ import re
 import numpy as np
 
 from scipy.fft import fft
+from scipy import interpolate
 
 # Script to contain helper functions and variables
 
@@ -74,4 +75,22 @@ def smooth(arr: list, window: int):
 
     return np.array(result)
 
+
+# Bin i of frequency f=i*fs/n on linear scale becomes f=55*2^(0.01689i)
+# The value 55 was chosen to give a minimum frequency of 55Hz,
+# in order to make f(512)=SAMPLE_RATE/2, the exponent was multiplied by 0.01689
+def get_exp_bins():
+    bins = list(range(0, 512))
+    result = []
+    for b in bins:
+        result.append(55 * pow(2, b * 0.01689))
+    return result
+
+# Converts the values from array representing the values of 512 linearly spaced bins
+# to array representing the values of 512 exponentially spaces bins
+def to_exponential(x):
+    bins = get_bins()
+    exp_bins = get_exp_bins()
+    interpolater = interpolate.interp1d(bins, x)
+    return interpolater(exp_bins)
     
