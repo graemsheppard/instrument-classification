@@ -1,6 +1,7 @@
 import os
 import train
 import argparse
+from isolate import isolate
 
 import numpy as np
 import tensorflow as tf
@@ -14,29 +15,18 @@ from util import SAMPLE_SIZE, STEP_SIZE, LABELS, transform
 
 def parse_args():
     parser = argparse.ArgumentParser(description="An AI that detects the instruments playing in a sample")
-    parser.add_argument('-p', '--path', type=str, help='Input file path', required=True)
+    parser.add_argument('-p', '--path', type=str, help='Input file path')
     parser.add_argument('-b', '--build', action='store_true', help='Force build the model, even if one already exists')
+    parser.add_argument('-i', '--isolate', type=str, help='Three-letter string denoting the instrument to be isolated')
+    parser.add_argument('-n', '--name', type=str, help='The name of the file to isolate sound of. For use with -f')
     args = parser.parse_args()
     return args
     
 def load_keras_model():
     model: Sequential = load_model('saved_model')
     return model
-
-def main():
-    args = parse_args()
-    # Whatever we want to do with that path
-    # print(args.path)
     
-    if (args.build):
-        train.main()
-    
-    try:
-        model = load_keras_model()
-    except:
-        train.main()
-        model = load_keras_model()
-
+def predict_files(model):
     data_dir = "testing_data"
     files = os.listdir(data_dir)
     
@@ -86,7 +76,35 @@ def main():
         for i, average in enumerate(averages):
             if average > 0.2:
                 print(LABELS[i])
+                
+def isolate_instrument(label, name):
+    data_dir = 'training_data'
+    input_file_path = os.path.join(data_dir, label, '[tru][cla]1870__1.wav')
+    isolate(label, input_file_path)
 
+def main():
+    args = parse_args()
+    # Whatever we want to do with that path
+    # print(args.path)
+    
+    if (args.build):
+        train.main()
+    
+    try:
+        model = load_keras_model()
+    except:
+        train.main()
+        model = load_keras_model()
+
+    if (args.isolate is None or args.isolate == ''):
+        predict_files(model)
+        return
+    
+    name = '[tru][cla]1870__1.wav'
+    if not (args.name is None or args.name == ''):
+        name = args.name
+    isolate_instrument(args.isolate, name)
+    
 if __name__ == "__main__":
     main()
     
