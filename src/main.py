@@ -18,7 +18,6 @@ def parse_args():
     parser.add_argument('-p', '--path', type=str, help='Input file path')
     parser.add_argument('-b', '--build', action='store_true', help='Force build the model, even if one already exists')
     parser.add_argument('-i', '--isolate', type=str, help='Three-letter string denoting the instrument to be isolated')
-    parser.add_argument('-n', '--name', type=str, help='The name of the file to isolate sound of. For use with -f')
     args = parser.parse_args()
     return args
     
@@ -76,34 +75,31 @@ def predict_files(model):
         for i, average in enumerate(averages):
             if average > 0.2:
                 print(LABELS[i])
-                
-def isolate_instrument(label, name):
-    data_dir = 'training_data'
-    input_file_path = os.path.join(data_dir, label, '[tru][cla]1870__1.wav')
-    isolate(label, input_file_path)
 
 def main():
     args = parse_args()
-    # Whatever we want to do with that path
-    # print(args.path)
     
+    # Build the model if requested
     if (args.build):
         train.main()
     
+    # If the model does not already exist, build it first
     try:
         model = load_keras_model()
     except:
         train.main()
         model = load_keras_model()
 
+    # If we don't specify we want to isolate an instrument, we run the prediction
     if (args.isolate is None or args.isolate == ''):
         predict_files(model)
         return
     
-    name = '[tru][cla]1870__1.wav'
-    if not (args.name is None or args.name == ''):
-        name = args.name
-    isolate_instrument(args.isolate, name)
+    # Otherwise, we isolate the requested instrument from the requested file. Here's a sample file from the data set that can quickly be used as a default.
+    input_file_path = os.path.join('training_data', args.isolate, '[tru][cla]1870__1.wav')
+    if not (args.path is None or args.path == ''):
+        input_file_path = args.path
+    isolate(args.isolate, input_file_path)
     
 if __name__ == "__main__":
     main()
