@@ -15,4 +15,4 @@ Training data can be downloaded [here](https://www.upf.edu/web/mtg/irmas) and sh
 ## Usage
 `py main.py -p <path>`
 Use the optional flag `-b` to force rebuilding the model.
-To isolate an instrument, use the flag -i followed by the three-letter tag for that instrument (eg. trumpet becomes 'tru'). You may additionally add the -n flag to specify which audio file you'd like to isolate an instrument from.
+To show predictions for all files in the data folder, use the `-a` argument.
