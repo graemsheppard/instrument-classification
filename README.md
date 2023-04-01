@@ -15,3 +15,4 @@ Training data can be downloaded [here](https://www.upf.edu/web/mtg/irmas) and sh
 ## Usage
 `py main.py -p <path>`
 Use the optional flag `-b` to force rebuilding the model.
+To show predictions for all files in the data folder, use the `-a` argument.

@@ -62,7 +62,7 @@ def main():
     label = 'tru'
     data_dir = 'training_data'
     input_file_path = os.path.join(data_dir, label, '[tru][cla]1870__1.wav')
-    isolate('tru', input_file_path)
+    isolate(label, input_file_path)
 
 if __name__ == '__main__':
     main()
